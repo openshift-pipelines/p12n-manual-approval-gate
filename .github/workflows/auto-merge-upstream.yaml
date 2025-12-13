@@ -36,6 +36,7 @@ jobs:
           '
         )
         for p in $pr_list; do
+          echo "Approving PR $p"
           gh pr merge --rebase --delete-branch --auto $p
         done
       env:
