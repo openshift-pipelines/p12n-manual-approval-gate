@@ -1,14 +1,14 @@
-ARG GO_BUILDER=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:v1.23
+ARG GO_BUILDER=registry.redhat.io/ubi9/go-toolset:1.24
 ARG RUNTIME=registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:6fc28bcb6776e387d7a35a2056d9d2b985dc4e26031e98a2bd35a7137cd6fd71
 
 FROM $GO_BUILDER AS builder
 
 WORKDIR /go/src/github.com/openshift-pipelines/manual-approval-gate
-COPY . .
+COPY upstream .
 RUN set -e; for f in patches/*.patch; do echo ${f}; [[ -f ${f} ]] || continue; git apply ${f}; done
 ENV GODEBUG="http2server=0"
 ENV GOEXPERIMENT=strictfipsruntime
-RUN git rev-parse HEAD > /tmp/HEAD
+
 RUN CGO_ENABLED=0 \
     go build -ldflags="-X 'knative.dev/pkg/changeset.rev=$(cat /tmp/HEAD)'" -mod=vendor -tags disable_gcp,strictfipsruntime  -v -o /tmp/manual-approval-gate-controller \
     ./cmd/controller
@@ -20,7 +20,6 @@ ENV KO_APP=/ko-app \
     KO_DATA_PATH=/kodata
 
 COPY --from=builder /tmp/manual-approval-gate-controller ${KO_APP}/manual-approval-gate-controller
-COPY --from=builder /tmp/HEAD ${KO_DATA_PATH}/HEAD
 
 LABEL \
     com.redhat.component="openshift-pipelines-manual-approval-gate-rhel8-container" \
@@ -33,8 +32,6 @@ LABEL \
     io.k8s.description="Red Hat OpenShift Pipelines Manual Approval Gate" \
     io.openshift.tags="pipelines,tekton,openshift"
 
-
-RUN microdnf install -y shadow-utils
 RUN groupadd -r -g 65532 nonroot && useradd --no-log-init -r -u 65532 -g nonroot nonroot
 USER 65532
 
