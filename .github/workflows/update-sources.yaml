@@ -23,7 +23,7 @@ jobs:
         rm -fR upstream
         git clone https://github.com/openshift-pipelines/manual-approval-gate upstream
         pushd upstream
-        git checkout -B release-v0.7.0 origin/release-v0.7.0
+        git checkout -B release-v0.7.x origin/release-v0.7.x
         popd
     - name: Commit new changes
       run: |
