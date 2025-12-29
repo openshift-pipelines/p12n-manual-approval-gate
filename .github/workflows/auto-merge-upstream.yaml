@@ -1,9 +1,9 @@
 # Generated for Konflux Application openshift-pipelines-core by openshift-pipelines/hack. DO NOT EDIT
-name: auto-merge-upstream-openshift-pipelines/manual-approval-gate
+name: auto-merge-upstream
 on:
   workflow_dispatch: {}
   schedule:
-    - cron: "0/30 * * * *"
+    - cron: "0,30 * * * *"
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
