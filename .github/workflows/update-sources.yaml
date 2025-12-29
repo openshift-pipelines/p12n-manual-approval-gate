@@ -1,9 +1,7 @@
 # Generated for Konflux Application openshift-pipelines-core by openshift-pipelines/hack. DO NOT EDIT
-name: update-sources-p12n-manual-approval-gate
+name: update-sources-openshift-pipelines/manual-approval-gate
 on:
   workflow_dispatch: {}
-  schedule:
-  - cron: "0 23 * * *" # At 23:00 everyday
 
 jobs:
 
@@ -23,7 +21,7 @@ jobs:
         rm -fR upstream
         git clone https://github.com/openshift-pipelines/manual-approval-gate upstream
         pushd upstream
-        git checkout -B release-v0.7.x origin/release-v0.7.x
+        git checkout -B release-v0.7.0 origin/release-v0.7.0
         popd
     - name: Commit new changes
       run: |
