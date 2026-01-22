@@ -24,6 +24,7 @@ LABEL \
     com.redhat.component="openshift-pipelines-manual-approval-gate-rhel8-container" \
     name="openshift-pipelines/pipelines-manual-approval-gate-rhel8" \
     version=$VERSION \
+    cpe="cpe:/a:redhat:openshift_pipelines:1.15::el8" \
     summary="Red Hat OpenShift Pipelines Manual Approval Gate" \
     maintainer="pipelines-extcomm@redhat.com" \
     description="Red Hat OpenShift Pipelines Manual Approval Gate" \
