@@ -22,15 +22,16 @@ ENV KO_APP=/ko-app \
 COPY --from=builder /tmp/manual-approval-gate-controller ${KO_APP}/manual-approval-gate-controller
 
 LABEL \
-    com.redhat.component="openshift-pipelines-manual-approval-gate-rhel8-container" \
-    name="openshift-pipelines/pipelines-manual-approval-gate-rhel8" \
-    version=$VERSION \
-    summary="Red Hat OpenShift Pipelines Manual Approval Gate" \
-    maintainer="pipelines-extcomm@redhat.com" \
-    description="Red Hat OpenShift Pipelines Manual Approval Gate" \
-    io.k8s.display-name="Red Hat OpenShift Pipelines Manual Approval Gate" \
-    io.k8s.description="Red Hat OpenShift Pipelines Manual Approval Gate" \
-    io.openshift.tags="pipelines,tekton,openshift"
+      com.redhat.component="openshift-pipelines-manual-approval-gate-controller-rhel9-container" \
+      cpe="cpe:/a:redhat:openshift_pipelines:next::el9" \
+      description="Red Hat OpenShift Pipelines manual-approval-gate controller" \
+      io.k8s.description="Red Hat OpenShift Pipelines manual-approval-gate controller" \
+      io.k8s.display-name="Red Hat OpenShift Pipelines manual-approval-gate controller" \
+      io.openshift.tags="tekton,openshift,manual-approval-gate,controller" \
+      maintainer="pipelines-extcomm@redhat.com" \
+      name="openshift-pipelines/pipelines-manual-approval-gate-controller-rhel9" \
+      summary="Red Hat OpenShift Pipelines manual-approval-gate controller" \
+      version="next"
 
 RUN groupadd -r -g 65532 nonroot && useradd --no-log-init -r -u 65532 -g nonroot nonroot
 USER 65532

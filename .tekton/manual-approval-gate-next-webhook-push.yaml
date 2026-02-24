@@ -12,14 +12,14 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
       == "next" &&
       ("upstream/***".pathChanged() || ".konflux/patches/***".pathChanged() || ".konflux/rpms/***".pathChanged() ||
-      ".konflux/dockerfiles/controller.Dockerfile".pathChanged() ||
-      ".tekton/p12n-manual-approval-gate-next-controller-push.yaml".pathChanged())
+      ".konflux/dockerfiles/webhook.Dockerfile".pathChanged() ||
+      ".tekton/manual-approval-gate-next-webhook-push.yaml".pathChanged())
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: openshift-pipelines-core-next
-    appstudio.openshift.io/component: p12n-manual-approval-gate-next-controller
+    appstudio.openshift.io/component: manual-approval-gate-next-webhook
     pipelines.appstudio.openshift.io/type: build
-  name: p12n-manual-approval-gate-next-controller-on-push
+  name: manual-approval-gate-next-webhook-on-push
   namespace: tekton-ecosystem-tenant
 spec:
   params:
@@ -30,9 +30,9 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/pipelines-manual-approval-gate-controller-rhel9:{{revision}}
+    value: quay.io/redhat-user-workloads/tekton-ecosystem-tenant/pipelines-manual-approval-gate-webhook-rhel9:{{revision}}
   - name: dockerfile
-    value: .konflux/dockerfiles/controller.Dockerfile
+    value: .konflux/dockerfiles/webhook.Dockerfile
   - name: additional-tags
     value:
       - "next"
@@ -42,7 +42,7 @@ spec:
   pipelineRef:
     name: docker-build-ta
   taskRunTemplate:
-    serviceAccountName: build-pipeline-p12n-manual-approval-gate-next-controller
+    serviceAccountName: build-pipeline-manual-approval-gate-next-webhook
   workspaces:
   - name: git-auth
     secret:
