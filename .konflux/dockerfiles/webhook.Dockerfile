@@ -9,13 +9,11 @@ RUN set -e; for f in patches/*.patch; do echo ${f}; [[ -f ${f} ]] || continue; g
 ENV GODEBUG="http2server=0"
 ENV GOEXPERIMENT=strictfipsruntime
 
-RUN CGO_ENABLED=0 \
+RUN CGO_ENABLED=1 \
     go build -ldflags="-X 'knative.dev/pkg/changeset.rev=$(cat /tmp/HEAD)'" -mod=vendor -tags disable_gcp,strictfipsruntime  -v -o /tmp/manual-approval-gate-webhook \
     ./cmd/webhook
 
 FROM $RUNTIME
-ARG VERSION=manual-approval-gate-webhook-main
-
 ENV KO_APP=/ko-app
 
 COPY --from=builder /tmp/manual-approval-gate-webhook ${KO_APP}/manual-approval-gate-webhook
