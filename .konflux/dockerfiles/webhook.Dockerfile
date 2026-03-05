@@ -21,7 +21,7 @@ COPY --from=builder /tmp/manual-approval-gate-webhook ${KO_APP}/manual-approval-
 
 LABEL \
       com.redhat.component="openshift-pipelines-manual-approval-gate-webhook-rhel9-container" \
-      cpe="cpe:/a:redhat:openshift_pipelines:next::el9" \
+      cpe="cpe:/a:redhat:openshift_pipelines:1.18::el9" \
       description="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
       io.k8s.description="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
       io.k8s.display-name="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
@@ -29,7 +29,7 @@ LABEL \
       maintainer="pipelines-extcomm@redhat.com" \
       name="openshift-pipelines/pipelines-manual-approval-gate-webhook-rhel9" \
       summary="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
-      version="next"
+      version="v1.18.0"
 
 RUN groupadd -r -g 65532 nonroot && useradd --no-log-init -r -u 65532 -g nonroot nonroot
 USER 65532
