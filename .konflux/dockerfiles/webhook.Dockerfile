@@ -1,4 +1,4 @@
-ARG GO_BUILDER=registry.redhat.io/ubi9/go-toolset:9.7
+ARG GO_BUILDER=registry.access.redhat.com/ubi9/go-toolset:1.25
 ARG RUNTIME=registry.access.redhat.com/ubi9/ubi-minimal:latest@sha256:c7d44146f826037f6873d99da479299b889473492d3c1ab8af86f08af04ec8a0
 
 FROM $GO_BUILDER AS builder
@@ -20,16 +20,16 @@ ENV KO_APP=/ko-app
 COPY --from=builder /tmp/manual-approval-gate-webhook ${KO_APP}/manual-approval-gate-webhook
 
 LABEL \
-      com.redhat.component="openshift-pipelines-manual-approval-gate-webhook-rhel9-container" \
-      cpe="cpe:/a:redhat:openshift_pipelines:next::el9" \
-      description="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
-      io.k8s.description="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
-      io.k8s.display-name="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
-      io.openshift.tags="tekton,openshift,manual-approval-gate,webhook" \
-      maintainer="pipelines-extcomm@redhat.com" \
-      name="openshift-pipelines/pipelines-manual-approval-gate-webhook-rhel9" \
-      summary="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
-      version="next"
+    com.redhat.component="openshift-pipelines-manual-approval-gate-webhook-rhel9-container" \
+    cpe="cpe:/a:redhat:openshift_pipelines:next::el9" \
+    description="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
+    io.k8s.description="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
+    io.k8s.display-name="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
+    io.openshift.tags="tekton,openshift,manual-approval-gate,webhook" \
+    maintainer="pipelines-extcomm@redhat.com" \
+    name="openshift-pipelines/pipelines-manual-approval-gate-webhook-rhel9" \
+    summary="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
+    version="next"
 
 RUN groupadd -r -g 65532 nonroot && useradd --no-log-init -r -u 65532 -g nonroot nonroot
 USER 65532
