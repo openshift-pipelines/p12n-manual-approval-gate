@@ -1,6 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "schedule": ["0 0 * * *"],
   "extends": [
     "github>konflux-ci/mintmaker//config/renovate/renovate.json"
   ],
@@ -20,7 +19,8 @@
   "packageRules": [
     {
       "matchPackageNames": ["*"],
-      "automerge": true
+      "automerge": true,
+      "schedule": ["0 0 1 * *"]
     }
   ]
 }
