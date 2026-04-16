@@ -68,14 +68,11 @@ spec:
           value: config-observability
         - name: METRICS_DOMAIN
           value: openshift-pipelines.org/manual-approval-gate
-        - name: KUBERNETES_MIN_VERSION
-          value: "v1.28.0"
         securityContext:
           seccompProfile:
             type: RuntimeDefault
           # runAsNonRoot: true
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
           # runAsUser: 65532
           capabilities:
             drop:

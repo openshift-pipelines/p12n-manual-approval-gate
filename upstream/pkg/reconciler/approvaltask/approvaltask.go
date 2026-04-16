@@ -59,7 +59,6 @@ const (
 	allApprovers      = "approvers"
 	approvalsRequired = "numberOfApprovalsRequired"
 	description       = "description"
-	timeout           = "timeout"
 
 	// CustomRunLabelKey is used as the label identifier for a ApprovalTask
 	CustomRunLabelKey = "tekton.dev/customRun"
@@ -119,41 +118,6 @@ func (c *Reconciler) ReconcileKind(ctx context.Context, run *v1beta1.CustomRun) 
 		return nil
 	}
 
-	// Validate parameters early for fail-fast behavior
-	if err := ValidateCustomRunParameters(run); err != nil {
-		detailedMsg := fmt.Sprintf("ApprovalTask validation failed: %s", err.Error())
-		run.Status.MarkCustomRunFailed(approvaltaskv1alpha1.ApprovalTaskRunReasonFailedValidation.String(),
-			detailedMsg)
-		logger.Errorf("Parameter validation failed for Run %s/%s: %v", run.Namespace, run.Name, err)
-		
-		// Emit an event with detailed error message for better visibility
-		events.Emit(ctx, nil, &apis.Condition{
-			Type:    apis.ConditionSucceeded,
-			Status:  "False",
-			Reason:  approvaltaskv1alpha1.ApprovalTaskRunReasonFailedValidation.String(), 
-			Message: detailedMsg,
-		}, run)
-		return nil
-	}
-
-	// Parse timeout parameter from params if provided
-	if run.Spec.Timeout == nil {
-		for _, param := range run.Spec.Params {
-			if param.Name == timeout {
-				duration, err := time.ParseDuration(param.Value.StringVal)
-				if err != nil {
-					logger.Errorf("Invalid timeout parameter value '%s' for Run %s/%s: %v", param.Value.StringVal, run.Namespace, run.Name, err)
-					run.Status.MarkCustomRunFailed(approvaltaskv1alpha1.ApprovalTaskRunReasonFailedValidation.String(),
-						fmt.Sprintf("Invalid timeout parameter: %s", err.Error()))
-					return nil
-				}
-				run.Spec.Timeout = &metav1.Duration{Duration: duration}
-				logger.Infof("Set timeout from parameter to %v for Run %s/%s", duration, run.Namespace, run.Name)
-				break
-			}
-		}
-	}
-
 	// Store the condition before reconcile
 	beforeCondition := run.Status.GetCondition(apis.ConditionSucceeded)
 
@@ -207,6 +171,14 @@ func (r *Reconciler) reconcile(ctx context.Context, run *v1beta1.CustomRun, stat
 	// Propagate labels and annotations from ApprovalTask to Run.
 	propagateApprovalTaskLabelsAndAnnotations(run, approvalTaskMeta)
 
+	// Validate ApprovalTask spec
+	if err := approvalTaskSpec.Validate(ctx); err != nil {
+		run.Status.MarkCustomRunFailed(approvaltaskv1alpha1.ApprovalTaskRunReasonFailedValidation.String(),
+			"ApprovalTask %s/%s can't be Run; it has an invalid spec: %s",
+			approvalTask.Namespace, approvalTask.Name, err)
+		return nil
+	}
+
 	if !approvalTask.HasStarted() {
 		approvalTask.Status.StartTime = &approvalTask.CreationTimestamp
 	}
@@ -233,10 +205,6 @@ func (r *Reconciler) reconcile(ctx context.Context, run *v1beta1.CustomRun, stat
 	if approvalTask.Status.StartTime != nil {
 		elapsed := r.clock.Since(approvalTask.Status.StartTime.Time)
 		waitTime := timeout.Duration - elapsed
-		// If waitTime is negative or very small, requeue immediately to check timeout
-		if waitTime <= 0 {
-			waitTime = time.Second
-		}
 		return controller.NewRequeueAfter(waitTime)
 	}
 

@@ -4,18 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"reflect"
 	"text/template"
 
 	"gotest.tools/v3/internal/source"
 )
 
-// A Result of a [Comparison].
+// A Result of a Comparison.
 type Result interface {
 	Success() bool
 }
 
-// StringResult is an implementation of [Result] that reports the error message
+// StringResult is an implementation of Result that reports the error message
 // string verbatim and does not provide any templating or formatting of the
 // message.
 type StringResult struct {
@@ -34,16 +33,16 @@ func (r StringResult) FailureMessage() string {
 	return r.message
 }
 
-// ResultSuccess is a constant which is returned by a [Comparison] to
+// ResultSuccess is a constant which is returned by a ComparisonWithResult to
 // indicate success.
 var ResultSuccess = StringResult{success: true}
 
-// ResultFailure returns a failed [Result] with a failure message.
+// ResultFailure returns a failed Result with a failure message.
 func ResultFailure(message string) StringResult {
 	return StringResult{message: message}
 }
 
-// ResultFromError returns [ResultSuccess] if err is nil. Otherwise [ResultFailure]
+// ResultFromError returns ResultSuccess if err is nil. Otherwise ResultFailure
 // is returned with the error message as the failure message.
 func ResultFromError(err error) Result {
 	if err == nil {
@@ -69,12 +68,7 @@ func (r templatedResult) FailureMessage(args []ast.Expr) string {
 	return msg
 }
 
-func (r templatedResult) UpdatedExpected(stackIndex int) error {
-	// TODO: would be nice to have structured data instead of a map
-	return source.UpdateExpectedValue(stackIndex+1, r.data["x"], r.data["y"])
-}
-
-// ResultFailureTemplate returns a [Result] with a template string and data which
+// ResultFailureTemplate returns a Result with a template string and data which
 // can be used to format a failure message. The template may access data from .Data,
 // the comparison args with the callArg function, and the formatNode function may
 // be used to format the call args.
@@ -90,11 +84,6 @@ func renderMessage(result templatedResult, args []ast.Expr) (string, error) {
 				return nil
 			}
 			return args[index]
-		},
-		// TODO: any way to include this from ErrorIS instead of here?
-		"notStdlibErrorType": func(typ interface{}) bool {
-			r := reflect.TypeOf(typ)
-			return r != stdlibFmtErrorType && r != stdlibErrorNewType
 		},
 	})
 	var err error

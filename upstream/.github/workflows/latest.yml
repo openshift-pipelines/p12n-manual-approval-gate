@@ -12,12 +12,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v4
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
         go-version: 1.21
-    - uses: actions/cache@v5
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
@@ -42,9 +42,9 @@ jobs:
     - uses: actions/setup-go@v5
       with:
         go-version: 1.21
-    - uses: imjasonh/setup-ko@v0.9
-    - uses: actions/checkout@v6
-    - uses: actions/cache@v5
+    - uses: imjasonh/setup-ko@v0.6
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
@@ -72,8 +72,8 @@ jobs:
     - uses: actions/setup-go@v5
       with:
         go-version: 1.21
-    - uses: actions/checkout@v6
-    - uses: actions/cache@v5
+    - uses: actions/checkout@v4
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
@@ -86,6 +86,6 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    - uses: imjasonh/setup-ko@v0.9
+    - uses: imjasonh/setup-ko@v0.6
     - run: |
-        ko publish --platform=linux/amd64,linux/s390x,linux/ppc64le,linux/arm64 --push=${{ github.event_name != 'pull_request' }} --base-import-paths ./cmd/controller
+        ko publish --push=${{ github.event_name != 'pull_request' }} --base-import-paths ./cmd/controller

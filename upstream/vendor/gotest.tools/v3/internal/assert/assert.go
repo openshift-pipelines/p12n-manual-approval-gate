@@ -1,4 +1,3 @@
-// Package assert provides internal utilties for assertions.
 package assert
 
 import (
@@ -24,6 +23,7 @@ type helperT interface {
 const failureMessage = "assertion failed: "
 
 // Eval the comparison and print a failure messages if the comparison has failed.
+// nolint: gocyclo
 func Eval(
 	t LogT,
 	argSelector argSelector,
@@ -115,7 +115,7 @@ func failureMsgFromError(err error) string {
 }
 
 func boolFailureMessage(expr ast.Expr) (string, error) {
-	if binaryExpr, ok := expr.(*ast.BinaryExpr); ok {
+	if binaryExpr, ok := expr.(*ast.BinaryExpr); ok && binaryExpr.Op == token.NEQ {
 		x, err := source.FormatNode(binaryExpr.X)
 		if err != nil {
 			return "", err
@@ -124,21 +124,7 @@ func boolFailureMessage(expr ast.Expr) (string, error) {
 		if err != nil {
 			return "", err
 		}
-
-		switch binaryExpr.Op {
-		case token.NEQ:
-			return x + " is " + y, nil
-		case token.EQL:
-			return x + " is not " + y, nil
-		case token.GTR:
-			return x + " is <= " + y, nil
-		case token.LSS:
-			return x + " is >= " + y, nil
-		case token.GEQ:
-			return x + " is less than " + y, nil
-		case token.LEQ:
-			return x + " is greater than " + y, nil
-		}
+		return x + " is " + y, nil
 	}
 
 	if unaryExpr, ok := expr.(*ast.UnaryExpr); ok && unaryExpr.Op == token.NOT {
@@ -147,10 +133,6 @@ func boolFailureMessage(expr ast.Expr) (string, error) {
 			return "", err
 		}
 		return x + " is true", nil
-	}
-
-	if ident, ok := expr.(*ast.Ident); ok {
-		return ident.Name + " is false", nil
 	}
 
 	formatted, err := source.FormatNode(expr)
