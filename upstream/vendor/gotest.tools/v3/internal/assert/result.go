@@ -1,7 +1,6 @@
 package assert
 
 import (
-	"errors"
 	"fmt"
 	"go/ast"
 
@@ -24,22 +23,6 @@ func RunComparison(
 	result := f()
 	if result.Success() {
 		return true
-	}
-
-	if source.IsUpdate() {
-		if updater, ok := result.(updateExpected); ok {
-			const stackIndex = 3 // Assert/Check, assert, RunComparison
-			err := updater.UpdatedExpected(stackIndex)
-			switch {
-			case err == nil:
-				return true
-			case errors.Is(err, source.ErrNotFound):
-				// do nothing, fallthrough to regular failure message
-			default:
-				t.Log("failed to update source", err)
-				return false
-			}
-		}
 	}
 
 	var message string
@@ -67,10 +50,6 @@ type resultWithComparisonArgs interface {
 
 type resultBasic interface {
 	FailureMessage() string
-}
-
-type updateExpected interface {
-	UpdatedExpected(stackIndex int) error
 }
 
 // filterPrintableExpr filters the ast.Expr slice to only include Expr that are

@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask"
+	approvaltaskv1alpha1 "github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask/v1alpha1"
 	v1alpha1 "github.com/openshift-pipelines/manual-approval-gate/pkg/apis/approvaltask/v1alpha1"
 	"github.com/openshift-pipelines/manual-approval-gate/pkg/client/clientset/versioned"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -41,184 +41,6 @@ import (
 var (
 	gvk = schema.GroupVersionKind{Group: "tekton.dev", Version: "v1beta1", Kind: "CustomRun"}
 )
-
-// validateApproverParameter validates a single approver string (user or group format).
-func validateApproverParameter(paramValue string, paramIndex int) error {
-	if strings.TrimSpace(paramValue) == "" {
-		return fmt.Errorf("approvers[%d]: approver name cannot be empty", paramIndex)
-	}
-
-	// Check for malformed group syntax
-	if strings.Contains(paramValue, " :") || strings.Contains(paramValue, ": ") {
-					return fmt.Errorf("approvers[%d]: invalid group format '%s' - use 'group:groupname' format (remove spaces around colon)", paramIndex, paramValue)
-	}
-
-	// Handle explicit group syntax: "group:groupname"
-	if strings.HasPrefix(paramValue, "group:") {
-		return validateGroupSyntax(paramValue, paramIndex)
-	}
-
-	return validateUserSyntax(paramValue, paramIndex)
-}
-
-// validateGroupSyntax validates the "group:groupname" format and ensures proper syntax.
-func validateGroupSyntax(paramValue string, paramIndex int) error {
-	parts := strings.SplitN(paramValue, ":", 2)
-	if len(parts) != 2 || strings.TrimSpace(parts[1]) == "" {
-		return fmt.Errorf("approvers[%d]: invalid group format '%s' - group name cannot be empty after 'group:'", paramIndex, paramValue)
-	}
-	
-	groupName := parts[1]
-	// Validate group name format inline
-	if strings.TrimSpace(groupName) == "" {
-		return fmt.Errorf("approvers[%d]: group name cannot be empty", paramIndex)
-	}
-	if strings.Contains(groupName, ":") {
-		return fmt.Errorf("approvers[%d]: group name '%s' cannot contain colons", paramIndex, groupName)
-	}
-	if strings.Contains(groupName, " ") {
-		return fmt.Errorf("approvers[%d]: group name '%s' cannot contain spaces", paramIndex, groupName)
-	}
-	
-	return nil
-}
-
-// validateUserSyntax validates a plain username approver.
-func validateUserSyntax(paramValue string, paramIndex int) error {
-	// Validate user name format inline
-	if strings.TrimSpace(paramValue) == "" {
-		return fmt.Errorf("approvers[%d]: username cannot be empty", paramIndex)
-	}
-	
-	return nil
-}
-
-// ValidateCustomRunParameters validates CustomRun parameters for early error detection.
-func ValidateCustomRunParameters(run *v1beta1.CustomRun) error {
-	var hasApprovers bool
-	var approversCount int
-	var validationErrors []string
-
-	for _, param := range run.Spec.Params {
-		switch param.Name {
-		case allApprovers:
-			hasApprovers = true
-			count, errs := validateApproversParam(param)
-			approversCount = count
-			validationErrors = append(validationErrors, errs...)
-		case approvalsRequired:
-			if err := validateApprovalsRequired(param.Value.StringVal); err != nil {
-				return err
-			}
-		}
-	}
-
-	if len(validationErrors) > 0 {
-		return fmt.Errorf("invalid approvers parameter: %s", validationErrors[0])
-	}
-
-	if !hasApprovers {
-		return fmt.Errorf("no valid approvers found - at least one approver is required")
-	}
-
-	if approversCount == 0 {
-		return fmt.Errorf("no valid approvers found - at least one approver is required")
-	}
-
-	return nil
-}
-
-// validateApproversParam validates the approvers parameter and returns count + errors
-func validateApproversParam(param v1beta1.Param) (int, []string) {
-	var validationErrors []string
-	var approversCount int
-
-	// Parse approvers list from different formats
-	approverList := parseApproversList(param, &validationErrors)
-
-	// Validate each approver
-	for i, approver := range approverList {
-		switch val := approver.(type) {
-		case string:
-			if err := validateApproverParameter(val, i); err != nil {
-				validationErrors = append(validationErrors, err.Error())
-			} else {
-				approversCount++
-			}
-		case map[string]interface{}:
-			validateMalformedObjectApprover(val, i, &validationErrors)
-		default:
-			validationErrors = append(validationErrors, fmt.Sprintf("approvers[%d]: invalid approver format - must be a string", i))
-		}
-	}
-
-	return approversCount, validationErrors
-}
-
-// parseApproversList extracts approvers from different parameter formats
-func parseApproversList(param v1beta1.Param, validationErrors *[]string) []interface{} {
-	var approverList []interface{}
-
-	if len(param.Value.ArrayVal) > 0 {
-		for _, approver := range param.Value.ArrayVal {
-			approverList = append(approverList, approver)
-		}
-	}
-
-	if len(param.Value.ObjectVal) > 0 {
-		// Convert map[string]string to map[string]interface{} for proper handling
-		objectVal := make(map[string]interface{})
-		for k, v := range param.Value.ObjectVal {
-			objectVal[k] = v
-		}
-		approverList = append(approverList, objectVal)
-	}
-
-	if param.Value.StringVal != "" && len(approverList) == 0 {
-		var jsonData interface{}
-		if err := json.Unmarshal([]byte(param.Value.StringVal), &jsonData); err != nil {
-			*validationErrors = append(*validationErrors, fmt.Sprintf("failed to parse JSON '%s' - %v", param.Value.StringVal, err))
-			return approverList
-		}
-		
-		if arr, ok := jsonData.([]interface{}); ok {
-			approverList = arr
-		} else {
-			*validationErrors = append(*validationErrors, "expected an array of approvers")
-		}
-	}
-
-	return approverList
-}
-
-// validateMalformedObjectApprover validates malformed object approvers (from YAML with spaces)
-func validateMalformedObjectApprover(approver map[string]interface{}, index int, validationErrors *[]string) {
-	if groupName, ok := approver["group"]; ok {
-		if groupStr, ok := groupName.(string); ok {
-			// Format the object as JSON for clear error message
-			objJSON := fmt.Sprintf(`{"group":"%s"}`, groupStr)
-			*validationErrors = append(*validationErrors, fmt.Sprintf("approvers[%d]: invalid group format %s - use 'group:%s' format instead", index, objJSON, groupStr))
-		} else {
-			*validationErrors = append(*validationErrors, fmt.Sprintf("approvers[%d]: invalid group specification", index))
-		}
-	} else {
-		// Handle other object formats
-		objJSON, _ := json.Marshal(approver)
-		*validationErrors = append(*validationErrors, fmt.Sprintf("approvers[%d]: invalid object format %s - approver must be a string, not an object", index, string(objJSON)))
-	}
-}
-
-// validateApprovalsRequired validates the numberOfApprovalsRequired parameter value.
-func validateApprovalsRequired(value string) error {
-	approvals, err := strconv.Atoi(value)
-	if err != nil {
-		return fmt.Errorf("invalid numberOfApprovalsRequired parameter: '%s' is not a valid integer", value)
-	}
-	if approvals <= 0 {
-		return fmt.Errorf("invalid numberOfApprovalsRequired parameter: must be greater than 0, got %d", approvals)
-	}
-	return nil
-}
 
 func checkCustomRunReferencesApprovalTask(run *v1beta1.CustomRun) error {
 	var apiVersion, kind string
@@ -359,26 +181,12 @@ func createApprovalTask(ctx context.Context, approvaltaskClientSet versioned.Int
 					approver.Name = name
 					approver.Input = pendingState
 
-					// Check if the type is mentioned in the params
-					if strings.HasPrefix(name, "group:") {
-						approver.Type = "Group"
-
-						if strings.HasPrefix(approver.Name, "group:") {
-							parts := strings.SplitN(approver.Name, ":", 2)
-							if len(parts) == 2 {
-								approver.Name = parts[1]
-							}
-						}
-					} else {
-						approver.Type = "User"
-					}
-
-					if !approverExists[approver.Name] {
+					if !approverExists[name] {
 						approvers = append(approvers, approver)
-						approverExists[approver.Name] = true
+						approverExists[name] = true
 					}
-					users = append(users, approver.Name)
-					userExists[approver.Name] = true
+					users = append(users, name)
+					userExists[name] = true
 				}
 			}
 		} else if v.Name == approvalsRequired {
@@ -437,8 +245,6 @@ func createApprovalTask(ctx context.Context, approvaltaskClientSet versioned.Int
 		State:             pendingState,
 		Approvers:         users,
 		ApproversResponse: []v1alpha1.ApproverState{},
-		ApprovalsRequired: numberOfApprovalsRequired,
-		ApprovalsReceived: 0, // Initially no approvals received
 	}
 
 	at.Status = status
@@ -461,50 +267,17 @@ func approvalTaskHasFalseInput(approvalTask v1alpha1.ApprovalTask) bool {
 
 func approvalTaskHasTrueInput(approvalTask v1alpha1.ApprovalTask) bool {
 	// Count approvers with input "approve"
-	requiredApprovals := approvalTask.Spec.NumberOfApprovalsRequired
-
-	approvedUsers := make(map[string]bool)
-
+	count := 0
 	for _, approver := range approvalTask.Spec.Approvers {
-		if approver.Input != hasApproved {
-			continue
-		}
-
-		if v1alpha1.DefaultedApproverType(approver.Type) == "User" {
-			approvedUsers[approver.Name] = true
-		} else if v1alpha1.DefaultedApproverType(approver.Type) == "Group" {
-			for _, user := range approver.Users {
-				if user.Input == hasApproved {
-					approvedUsers[user.Name] = true
-				}
-			}
+		if approver.Input == hasApproved {
+			count++
 		}
 	}
 
-	return len(approvedUsers) >= requiredApprovals
-}
-
-func countApprovalsReceived(approvalTask v1alpha1.ApprovalTask) int {
-	// Count unique users who have approved
-	approvedUsers := make(map[string]bool)
-
-	for _, approver := range approvalTask.Spec.Approvers {
-		if approver.Input != hasApproved {
-			continue
-		}
-
-		if v1alpha1.DefaultedApproverType(approver.Type) == "User" {
-			approvedUsers[approver.Name] = true
-		} else if v1alpha1.DefaultedApproverType(approver.Type) == "Group" {
-			for _, user := range approver.Users {
-				if user.Input == hasApproved {
-					approvedUsers[user.Name] = true
-				}
-			}
-		}
+	if count == approvalTask.Spec.NumberOfApprovalsRequired {
+		return true
 	}
-
-	return len(approvedUsers)
+	return false
 }
 
 func (r *Reconciler) checkIfUpdateRequired(ctx context.Context, approvalTask v1alpha1.ApprovalTask, run *v1beta1.CustomRun) error {
@@ -527,10 +300,10 @@ func (r *Reconciler) checkIfUpdateRequired(ctx context.Context, approvalTask v1a
 			logger.Infof("Approval task %s is in pending state", approvalTask.Name)
 		case rejectedState:
 			logger.Infof("Approval task %s is rejected", approvalTask.Name)
-			run.Status.MarkCustomRunFailed(v1alpha1.ApprovalTaskRunReasonFailed.String(), "Approval Task denied")
+			run.Status.MarkCustomRunFailed(approvaltaskv1alpha1.ApprovalTaskRunReasonFailed.String(), "Approval Task denied")
 		case approvedState:
 			logger.Infof("Approval task %s is approved", approvalTask.Name)
-			run.Status.MarkCustomRunSucceeded(v1alpha1.ApprovalTaskRunReasonSucceeded.String(),
+			run.Status.MarkCustomRunSucceeded(approvaltaskv1alpha1.ApprovalTaskRunReasonSucceeded.String(),
 				"TaskRun succeeded")
 		}
 	}
@@ -543,79 +316,19 @@ func updateApprovalState(ctx context.Context, approvaltaskClientSet versioned.In
 	// Temp map to hold current approvers with approve and reject input
 	currentApprovers := make(map[string]v1alpha1.ApproverState)
 	approvalTask.Status.ApproversResponse = []v1alpha1.ApproverState{}
-	// Track users who have already been processed as individual approvers
-	// to avoid duplicate entries when they are also group members
-	processedUserApprovers := make(map[string]bool)
-	
-	// First pass: Process all User type approvers
+	// Populate the map with approvers having input approve/reject
 	for _, approver := range approvalTask.Spec.Approvers {
-		if (approver.Input == hasApproved || approver.Input == hasRejected) && v1alpha1.DefaultedApproverType(approver.Type) == "User" {
+		if approver.Input == hasApproved || approver.Input == hasRejected {
 			response := ""
 			if approver.Input == hasApproved {
 				response = approvedState
 			} else if approver.Input == hasRejected {
 				response = rejectedState
 			}
-			
 			currentApprovers[approver.Name] = v1alpha1.ApproverState{
 				Name:     approver.Name,
-				Type:     "User",
 				Response: response,
 				Message:  approver.Message,
-			}
-			// Mark this user as processed to avoid duplication in group processing
-			processedUserApprovers[approver.Name] = true
-		}
-	}
-	
-	// Second pass: Process Group type approvers, excluding users already processed as individuals
-	for _, approver := range approvalTask.Spec.Approvers {
-		if (approver.Input == hasApproved || approver.Input == hasRejected) && v1alpha1.DefaultedApproverType(approver.Type) == "Group" {
-			groupMembers := []v1alpha1.GroupMemberState{}
-			groupResponse := ""
-			hasApprovals := false
-			hasRejections := false
-
-			for _, user := range approver.Users {
-				// Skip users who have already been processed as individual approvers
-				// This prevents duplicate entries when a user is both an individual approver and group member
-				if processedUserApprovers[user.Name] {
-					continue
-				}
-				
-				userResponse := ""
-				if user.Input == hasApproved {
-					userResponse = approvedState
-					hasApprovals = true
-				} else if user.Input == hasRejected {
-					userResponse = rejectedState
-					hasRejections = true
-				}
-
-				if userResponse != "" {
-					groupMembers = append(groupMembers, v1alpha1.GroupMemberState{
-						Name:     user.Name,
-						Response: userResponse,
-						Message:  user.Message, // Inherit message from user level
-					})
-				}
-			}
-
-			// Determine group response based on individual user responses
-			if hasRejections {
-				groupResponse = rejectedState
-			} else if hasApprovals {
-				groupResponse = approvedState
-			}
-
-			if groupResponse != "" {
-				currentApprovers[approver.Name] = v1alpha1.ApproverState{
-					Name:         approver.Name,
-					Type:         "Group",
-					Response:     groupResponse,
-					Message:      approver.Message,
-					GroupMembers: groupMembers,
-				}
 			}
 		}
 	}
@@ -629,10 +342,6 @@ func updateApprovalState(ctx context.Context, approvaltaskClientSet versioned.In
 
 		// Update the ApprovedBy list
 		approvalTask.Status.ApproversResponse = filteredApprovedBy
-
-		// Update the approvals count fields
-		approvalTask.Status.ApprovalsRequired = approvalTask.Spec.NumberOfApprovalsRequired
-		approvalTask.Status.ApprovalsReceived = countApprovalsReceived(*approvalTask)
 
 		// Update the approvalState
 		// Reject scenario: Check if there is one false and if found mark the approvalstate to false

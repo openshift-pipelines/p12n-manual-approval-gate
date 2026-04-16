@@ -19,10 +19,10 @@ var (
 	// set (regardless of its value). This is a global option and affects all
 	// colors. For more control over each color block use the methods
 	// DisableColor() individually.
-	NoColor = noColorIsSet() || os.Getenv("TERM") == "dumb" ||
+	NoColor = noColorExists() || os.Getenv("TERM") == "dumb" ||
 		(!isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()))
 
-	// Output defines the standard output of the print functions. By default,
+	// Output defines the standard output of the print functions. By default
 	// os.Stdout is used.
 	Output = colorable.NewColorableStdout()
 
@@ -35,9 +35,10 @@ var (
 	colorsCacheMu sync.Mutex // protects colorsCache
 )
 
-// noColorIsSet returns true if the environment variable NO_COLOR is set to a non-empty string.
-func noColorIsSet() bool {
-	return os.Getenv("NO_COLOR") != ""
+// noColorExists returns true if the environment variable NO_COLOR exists.
+func noColorExists() bool {
+	_, exists := os.LookupEnv("NO_COLOR")
+	return exists
 }
 
 // Color defines a custom color object which is defined by SGR parameters.
@@ -65,29 +66,6 @@ const (
 	CrossedOut
 )
 
-const (
-	ResetBold Attribute = iota + 22
-	ResetItalic
-	ResetUnderline
-	ResetBlinking
-	_
-	ResetReversed
-	ResetConcealed
-	ResetCrossedOut
-)
-
-var mapResetAttributes map[Attribute]Attribute = map[Attribute]Attribute{
-	Bold:         ResetBold,
-	Faint:        ResetBold,
-	Italic:       ResetItalic,
-	Underline:    ResetUnderline,
-	BlinkSlow:    ResetBlinking,
-	BlinkRapid:   ResetBlinking,
-	ReverseVideo: ResetReversed,
-	Concealed:    ResetConcealed,
-	CrossedOut:   ResetCrossedOut,
-}
-
 // Foreground text colors
 const (
 	FgBlack Attribute = iota + 30
@@ -98,9 +76,6 @@ const (
 	FgMagenta
 	FgCyan
 	FgWhite
-
-	// used internally for 256 and 24-bit coloring
-	foreground
 )
 
 // Foreground Hi-Intensity text colors
@@ -125,9 +100,6 @@ const (
 	BgMagenta
 	BgCyan
 	BgWhite
-
-	// used internally for 256 and 24-bit coloring
-	background
 )
 
 // Background Hi-Intensity text colors
@@ -148,35 +120,11 @@ func New(value ...Attribute) *Color {
 		params: make([]Attribute, 0),
 	}
 
-	if noColorIsSet() {
+	if noColorExists() {
 		c.noColor = boolPtr(true)
 	}
 
 	c.Add(value...)
-	return c
-}
-
-// RGB returns a new foreground color in 24-bit RGB.
-func RGB(r, g, b int) *Color {
-	return New(foreground, 2, Attribute(r), Attribute(g), Attribute(b))
-}
-
-// BgRGB returns a new background color in 24-bit RGB.
-func BgRGB(r, g, b int) *Color {
-	return New(background, 2, Attribute(r), Attribute(g), Attribute(b))
-}
-
-// AddRGB is used to chain foreground RGB SGR parameters. Use as many as parameters to combine
-// and create custom color objects. Example: .Add(34, 0, 12).Add(255, 128, 0).
-func (c *Color) AddRGB(r, g, b int) *Color {
-	c.params = append(c.params, foreground, 2, Attribute(r), Attribute(g), Attribute(b))
-	return c
-}
-
-// AddRGB is used to chain background RGB SGR parameters. Use as many as parameters to combine
-// and create custom color objects. Example: .Add(34, 0, 12).Add(255, 128, 0).
-func (c *Color) AddBgRGB(r, g, b int) *Color {
-	c.params = append(c.params, background, 2, Attribute(r), Attribute(g), Attribute(b))
 	return c
 }
 
@@ -204,7 +152,7 @@ func (c *Color) Set() *Color {
 		return c
 	}
 
-	fmt.Fprint(Output, c.format())
+	fmt.Fprintf(Output, c.format())
 	return c
 }
 
@@ -216,21 +164,16 @@ func (c *Color) unset() {
 	Unset()
 }
 
-// SetWriter is used to set the SGR sequence with the given io.Writer. This is
-// a low-level function, and users should use the higher-level functions, such
-// as color.Fprint, color.Print, etc.
-func (c *Color) SetWriter(w io.Writer) *Color {
+func (c *Color) setWriter(w io.Writer) *Color {
 	if c.isNoColorSet() {
 		return c
 	}
 
-	fmt.Fprint(w, c.format())
+	fmt.Fprintf(w, c.format())
 	return c
 }
 
-// UnsetWriter resets all escape attributes and clears the output with the give
-// io.Writer. Usually should be called after SetWriter().
-func (c *Color) UnsetWriter(w io.Writer) {
+func (c *Color) unsetWriter(w io.Writer) {
 	if c.isNoColorSet() {
 		return
 	}
@@ -249,14 +192,20 @@ func (c *Color) Add(value ...Attribute) *Color {
 	return c
 }
 
+func (c *Color) prepend(value Attribute) {
+	c.params = append(c.params, 0)
+	copy(c.params[1:], c.params[0:])
+	c.params[0] = value
+}
+
 // Fprint formats using the default formats for its operands and writes to w.
 // Spaces are added between operands when neither is a string.
 // It returns the number of bytes written and any write error encountered.
 // On Windows, users should wrap w with colorable.NewColorable() if w is of
 // type *os.File.
 func (c *Color) Fprint(w io.Writer, a ...interface{}) (n int, err error) {
-	c.SetWriter(w)
-	defer c.UnsetWriter(w)
+	c.setWriter(w)
+	defer c.unsetWriter(w)
 
 	return fmt.Fprint(w, a...)
 }
@@ -278,8 +227,8 @@ func (c *Color) Print(a ...interface{}) (n int, err error) {
 // On Windows, users should wrap w with colorable.NewColorable() if w is of
 // type *os.File.
 func (c *Color) Fprintf(w io.Writer, format string, a ...interface{}) (n int, err error) {
-	c.SetWriter(w)
-	defer c.UnsetWriter(w)
+	c.setWriter(w)
+	defer c.unsetWriter(w)
 
 	return fmt.Fprintf(w, format, a...)
 }
@@ -299,7 +248,10 @@ func (c *Color) Printf(format string, a ...interface{}) (n int, err error) {
 // On Windows, users should wrap w with colorable.NewColorable() if w is of
 // type *os.File.
 func (c *Color) Fprintln(w io.Writer, a ...interface{}) (n int, err error) {
-	return fmt.Fprintln(w, c.wrap(sprintln(a...)))
+	c.setWriter(w)
+	defer c.unsetWriter(w)
+
+	return fmt.Fprintln(w, a...)
 }
 
 // Println formats using the default formats for its operands and writes to
@@ -308,7 +260,10 @@ func (c *Color) Fprintln(w io.Writer, a ...interface{}) (n int, err error) {
 // encountered. This is the standard fmt.Print() method wrapped with the given
 // color.
 func (c *Color) Println(a ...interface{}) (n int, err error) {
-	return fmt.Fprintln(Output, c.wrap(sprintln(a...)))
+	c.Set()
+	defer c.unset()
+
+	return fmt.Fprintln(Output, a...)
 }
 
 // Sprint is just like Print, but returns a string instead of printing it.
@@ -318,7 +273,7 @@ func (c *Color) Sprint(a ...interface{}) string {
 
 // Sprintln is just like Println, but returns a string instead of printing it.
 func (c *Color) Sprintln(a ...interface{}) string {
-	return c.wrap(sprintln(a...)) + "\n"
+	return c.wrap(fmt.Sprintln(a...))
 }
 
 // Sprintf is just like Printf, but returns a string instead of printing it.
@@ -400,7 +355,7 @@ func (c *Color) SprintfFunc() func(format string, a ...interface{}) string {
 // string. Windows users should use this in conjunction with color.Output.
 func (c *Color) SprintlnFunc() func(a ...interface{}) string {
 	return func(a ...interface{}) string {
-		return c.wrap(sprintln(a...)) + "\n"
+		return c.wrap(fmt.Sprintln(a...))
 	}
 }
 
@@ -430,18 +385,7 @@ func (c *Color) format() string {
 }
 
 func (c *Color) unformat() string {
-	//return fmt.Sprintf("%s[%dm", escape, Reset)
-	//for each element in sequence let's use the specific reset escape, or the generic one if not found
-	format := make([]string, len(c.params))
-	for i, v := range c.params {
-		format[i] = strconv.Itoa(int(Reset))
-		ra, ok := mapResetAttributes[v]
-		if ok {
-			format[i] = strconv.Itoa(int(ra))
-		}
-	}
-
-	return fmt.Sprintf("%s[%sm", escape, strings.Join(format, ";"))
+	return fmt.Sprintf("%s[%dm", escape, Reset)
 }
 
 // DisableColor disables the color output. Useful to not change any existing
@@ -452,7 +396,7 @@ func (c *Color) DisableColor() {
 }
 
 // EnableColor enables the color output. Use it in conjunction with
-// DisableColor(). Otherwise, this method has no side effects.
+// DisableColor(). Otherwise this method has no side effects.
 func (c *Color) EnableColor() {
 	c.noColor = boolPtr(false)
 }
@@ -469,12 +413,6 @@ func (c *Color) isNoColorSet() bool {
 
 // Equals returns a boolean value indicating whether two colors are equal.
 func (c *Color) Equals(c2 *Color) bool {
-	if c == nil && c2 == nil {
-		return true
-	}
-	if c == nil || c2 == nil {
-		return false
-	}
 	if len(c.params) != len(c2.params) {
 		return false
 	}
@@ -677,9 +615,4 @@ func HiCyanString(format string, a ...interface{}) string { return colorString(f
 // foreground.
 func HiWhiteString(format string, a ...interface{}) string {
 	return colorString(format, FgHiWhite, a...)
-}
-
-// sprintln is a helper function to format a string with fmt.Sprintln and trim the trailing newline.
-func sprintln(a ...interface{}) string {
-	return strings.TrimSuffix(fmt.Sprintln(a...), "\n")
 }
