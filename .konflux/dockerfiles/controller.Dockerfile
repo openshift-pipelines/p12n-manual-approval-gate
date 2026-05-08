@@ -1,5 +1,5 @@
 ARG GO_BUILDER=registry.access.redhat.com/ubi8/go-toolset:latest
-ARG RUNTIME=registry.access.redhat.com/ubi8/ubi-minimal:latest
+ARG RUNTIME=registry.access.redhat.com/ubi8/ubi:latest
 
 FROM $GO_BUILDER AS builder
 
