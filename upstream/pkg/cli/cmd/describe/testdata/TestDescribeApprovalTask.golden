@@ -7,10 +7,10 @@
 
 👨‍💻 ApproverResponse
 
-Name       ApproverResponse     Message
-tekton     ❌                    ---
+Name     ApproverResponse   Message
+tekton   ❌                  ---
 
 🌡️  Status
 
-NumberOfApprovalsRequired     PendingApprovals     STATUS
-2                             1                    Rejected
+NumberOfApprovalsRequired   PendingApprovals   STATUS
+2                           1                  Rejected
