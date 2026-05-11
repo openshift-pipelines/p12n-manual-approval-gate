@@ -24,7 +24,7 @@ var taskTemplate = `📦 Name:            {{ .ApprovalTask.Name }}
 
 👥 Approvers
 {{- range .ApprovalTask.Spec.Approvers }}
-   * {{ .Name }}{{if eq .Type "Group"}} (Group){{end}}
+   * {{ .Name }}
 {{- end }}
 
 
@@ -33,16 +33,10 @@ var taskTemplate = `📦 Name:            {{ .ApprovalTask.Name }}
 👨‍💻 ApproverResponse
 
 Name	ApproverResponse	Message
-{{- $userGroups := userGroups .ApprovalTask.Status.ApproversResponse}}
-{{- range $user, $groups := $userGroups}}
-{{$user}}{{if gt (len $groups.Groups) 0}}({{$groups.GroupsStr}}){{end}}	{{response $groups.Response}}	{{message $groups.Message}}
-{{- end}}
-{{- range .ApprovalTask.Status.ApproversResponse}}
-{{- if eq .Type "User"}}
-{{.Name}}	{{response .Response}}	{{message .Message}}
-{{- end}}
-{{- end}}
-{{- end}}
+{{- range .ApprovalTask.Status.ApproversResponse }}
+{{ .Name }}	{{response .Response }}	{{message .Message }}
+{{- end }}
+{{- end }}
 
 🌡️  Status
 
@@ -55,23 +49,7 @@ var (
 )
 
 func pendingApprovals(at *v1alpha1.ApprovalTask) int {
-	// Count unique users who have responded (approved or rejected)
-	respondedUsers := make(map[string]bool)
-
-	for _, approver := range at.Status.ApproversResponse {
-		if v1alpha1.DefaultedApproverType(approver.Type) == "User" {
-			respondedUsers[approver.Name] = true
-		} else if v1alpha1.DefaultedApproverType(approver.Type) == "Group" {
-			// Count individual group members who have responded
-			for _, member := range approver.GroupMembers {
-				if member.Response == "approved" || member.Response == "rejected" {
-					respondedUsers[member.Name] = true
-				}
-			}
-		}
-	}
-
-	return at.Spec.NumberOfApprovalsRequired - len(respondedUsers)
+	return at.Spec.NumberOfApprovalsRequired - len(at.Status.ApproversResponse)
 }
 
 func pipelineRunRef(at *v1alpha1.ApprovalTask) string {
@@ -99,54 +77,6 @@ func response(response string) string {
 	return "❌"
 }
 
-// UserGroupInfo holds information about a user's group memberships and responses
-type UserGroupInfo struct {
-	Groups    []string
-	GroupsStr string
-	Response  string
-	Message   string
-}
-
-// userGroups processes ApproversResponse to group users by name across multiple groups
-func userGroups(approversResponse []v1alpha1.ApproverState) map[string]UserGroupInfo {
-	userMap := make(map[string]UserGroupInfo)
-	
-	// Process group members
-	for _, approver := range approversResponse {
-		if approver.Type == "Group" {
-			for _, member := range approver.GroupMembers {
-				if existing, exists := userMap[member.Name]; exists {
-					// User already exists, add this group to their list
-					existing.Groups = append(existing.Groups, approver.Name)
-					userMap[member.Name] = existing
-				} else {
-					// New user, create entry
-					userMap[member.Name] = UserGroupInfo{
-						Groups:   []string{approver.Name},
-						Response: member.Response,
-						Message:  member.Message,
-					}
-				}
-			}
-		}
-	}
-	
-	// Create comma-separated group strings
-	for userName, info := range userMap {
-		groupsStr := ""
-		for i, group := range info.Groups {
-			if i > 0 {
-				groupsStr += ", "
-			}
-			groupsStr += group
-		}
-		info.GroupsStr = groupsStr
-		userMap[userName] = info
-	}
-	
-	return userMap
-}
-
 func Command(p cli.Params) *cobra.Command {
 	opts := &cli.Options{}
 
@@ -156,7 +86,6 @@ func Command(p cli.Params) *cobra.Command {
 		"message":          message,
 		"response":         response,
 		"state":            formatter.State,
-		"userGroups":       userGroups,
 	}
 
 	c := &cobra.Command{
@@ -195,7 +124,7 @@ func Command(p cli.Params) *cobra.Command {
 				ApprovalTask: at,
 			}
 
-			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 8, 5, ' ', tabwriter.TabIndent)
+			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 5, 3, ' ', tabwriter.TabIndent)
 			t := template.Must(template.New("Describe ApprovalTask").Funcs(funcMap).Parse(taskTemplate))
 
 			if err != nil {
