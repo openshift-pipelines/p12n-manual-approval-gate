@@ -74,7 +74,7 @@ jobs:
           fi
           
           git commit -F- <<EOF
-        [bot] Update release-v1.22.x from openshift-pipelines/manual-approval-gate:release-v0.8.0 to ${NEW_COMMIT}
+          [bot] Update release-v1.22.x from openshift-pipelines/manual-approval-gate:release-v0.8.0 to ${NEW_COMMIT}
           
               $ git diff --stat ${NEW_COMMIT}..${OLD_COMMIT}
           $(cat /tmp/diff.txt | sed 's/^/    /' | head -c 55555)
