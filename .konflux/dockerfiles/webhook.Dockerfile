@@ -1,4 +1,4 @@
-ARG GO_BUILDER=registry.access.redhat.com/ubi8/go-toolset:latest
+ARG GO_BUILDER=registry.access.redhat.com/ubi9/go-toolset:1.25
 ARG RUNTIME=registry.access.redhat.com/ubi8/ubi-minimal:latest
 
 FROM $GO_BUILDER AS builder
@@ -20,14 +20,14 @@ ENV KO_APP=/ko-app
 COPY --from=builder /tmp/manual-approval-gate-webhook ${KO_APP}/manual-approval-gate-webhook
 
 LABEL \
-    com.redhat.component="openshift-pipelines-manual-approval-gate-webhook-rhel8-container" \
+    com.redhat.component="openshift-pipelines-manual-approval-gate-webhook-rhel9-container" \
     cpe="cpe:/a:redhat:openshift_pipelines:1.15::el9" \
     description="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
     io.k8s.description="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
     io.k8s.display-name="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
     io.openshift.tags="tekton,openshift,manual-approval-gate,webhook" \
     maintainer="pipelines-extcomm@redhat.com" \
-    name="openshift-pipelines/pipelines-manual-approval-gate-webhook-rhel8" \
+    name="openshift-pipelines/pipelines-manual-approval-gate-webhook-rhel9" \
     summary="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
     version="v1.15.5"
 
