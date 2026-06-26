@@ -31,7 +31,4 @@ LABEL \
     summary="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
     version="v1.15.5"
 
-RUN groupadd -r -g 65532 nonroot && useradd --no-log-init -r -u 65532 -g nonroot nonroot
-USER 65532
-
 ENTRYPOINT ["/ko-app/manual-approval-gate-webhook"]
