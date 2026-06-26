@@ -10,16 +10,16 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "next" &&
+      == "release-v1.24.x" &&
       ("upstream/***".pathChanged() || ".konflux/patches/***".pathChanged() || ".konflux/rpms/***".pathChanged() ||
       ".konflux/dockerfiles/controller.Dockerfile".pathChanged() ||
-      ".tekton/manual-approval-gate-next-controller-push.yaml".pathChanged())
+      ".tekton/manual-approval-gate-1-24-controller-push.yaml".pathChanged())
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: openshift-pipelines-core-next
-    appstudio.openshift.io/component: manual-approval-gate-next-controller
+    appstudio.openshift.io/application: openshift-pipelines-core-1-24
+    appstudio.openshift.io/component: manual-approval-gate-1-24-controller
     pipelines.appstudio.openshift.io/type: build
-  name: manual-approval-gate-next-controller-on-push
+  name: manual-approval-gate-1-24-controller-on-push
   namespace: tekton-ecosystem-tenant
 spec:
   params:
@@ -35,19 +35,14 @@ spec:
     value: .konflux/dockerfiles/controller.Dockerfile
   - name: additional-tags
     value:
-      - "next"
+      - "v1.24.0"
   - name: prefetch-input
     value: |
       {"type": "rpm", "path": ".konflux/rpms"}
-  - name: repo-name
-    value: "manual-approval-gate"
-  - name: slack-group-ids
-    value:
-      - "S0B3NG4RH2Q"
   pipelineRef:
     name: docker-build-ta
   taskRunTemplate:
-    serviceAccountName: build-pipeline-manual-approval-gate-next-controller
+    serviceAccountName: build-pipeline-manual-approval-gate-1-24-controller
   workspaces:
   - name: git-auth
     secret:
