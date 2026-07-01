@@ -15,7 +15,6 @@
 package transport
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -76,10 +75,7 @@ func pingSingle(ctx context.Context, reg name.Registry, t http.RoundTripper, sch
 		resp.Body.Close()
 	}()
 
-	// If resp.Request is set, we may have followed a redirect,
-	// so we want to prefer resp.Request.URL.Scheme (if it's set)
-	// falling back to the original request's scheme.
-	insecure := cmp.Or(resp.Request, req).URL.Scheme == "http"
+	insecure := scheme == "http"
 
 	switch resp.StatusCode {
 	case http.StatusOK:

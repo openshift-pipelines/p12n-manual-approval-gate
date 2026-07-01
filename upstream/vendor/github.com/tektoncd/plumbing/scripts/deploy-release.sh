@@ -65,7 +65,11 @@ if [ -z "$TEKTON_VERSION" ]; then
 fi
 RELEASE_BUCKET=${RELEASE_BUCKET_OPT:-gs://tekton-releases}
 if [ -z "$RELEASE_FILE" ]; then
-    RELEASE_FILE="release.yaml"
+    if [ "$TEKTON_PROJECT" == "dashboard" ]; then
+        RELEASE_FILE="tekton-dashboard-release-readonly.yaml"
+    else
+        RELEASE_FILE="release.yaml"
+    fi
 fi
 if [ -z "$POST_RELEASE_FILE" ]; then
     if [ "$TEKTON_PROJECT" == "triggers" ]; then
@@ -74,7 +78,6 @@ if [ -z "$POST_RELEASE_FILE" ]; then
 fi
 CONTEXT=${CONTEXT:-gke_tekton-nightly_europe-north1-a_robocat}
 CLUSTER_RESOURCE=${CLUSTER_RESOURCE:-dogfooding-tekton-deployer}
-TARGET_NAMESPACE=${TARGET_NAMESPACE:-tekton-pipelines}
 
 # Deploy the release
 # cat <<EOF | tee
@@ -104,7 +107,7 @@ spec:
             "trigger-template": "tekton",
             "params": {
               "target": {
-                "namespace": "$TARGET_NAMESPACE",
+                "namespace": "tekton-pipelines",
                 "cluster-resource": "$CLUSTER_RESOURCE"
               },
               "tekton": {
