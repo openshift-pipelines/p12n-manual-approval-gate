@@ -5,28 +5,21 @@ package v1
 import (
 	userv1 "github.com/openshift/api/user/v1"
 	internal "github.com/openshift/client-go/user/applyconfigurations/internal"
-	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
-	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// GroupApplyConfiguration represents a declarative configuration of the Group type for use
+// GroupApplyConfiguration represents an declarative configuration of the Group type for use
 // with apply.
-//
-// # Group represents a referenceable set of Users
-//
-// Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).
 type GroupApplyConfiguration struct {
-	metav1.TypeMetaApplyConfiguration `json:",inline"`
-	// metadata is the standard object's metadata.
-	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
-	*metav1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	// users is the list of users in this group.
-	Users *userv1.OptionalNames `json:"users,omitempty"`
+	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
+	Users                            *userv1.OptionalNames `json:"users,omitempty"`
 }
 
-// Group constructs a declarative configuration of the Group type for use with
+// Group constructs an declarative configuration of the Group type for use with
 // apply.
 func Group(name string) *GroupApplyConfiguration {
 	b := &GroupApplyConfiguration{}
@@ -34,26 +27,6 @@ func Group(name string) *GroupApplyConfiguration {
 	b.WithKind("Group")
 	b.WithAPIVersion("user.openshift.io/v1")
 	return b
-}
-
-// ExtractGroupFrom extracts the applied configuration owned by fieldManager from
-// group for the specified subresource. Pass an empty string for subresource to extract
-// the main resource. Common subresources include "status", "scale", etc.
-// group must be a unmodified Group API object that was retrieved from the Kubernetes API.
-// ExtractGroupFrom provides a way to perform a extract/modify-in-place/apply workflow.
-// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
-// applied if another fieldManager has updated or force applied any of the previously applied fields.
-func ExtractGroupFrom(group *userv1.Group, fieldManager string, subresource string) (*GroupApplyConfiguration, error) {
-	b := &GroupApplyConfiguration{}
-	err := managedfields.ExtractInto(group, internal.Parser().Type("com.github.openshift.api.user.v1.Group"), fieldManager, b, subresource)
-	if err != nil {
-		return nil, err
-	}
-	b.WithName(group.Name)
-
-	b.WithKind("Group")
-	b.WithAPIVersion("user.openshift.io/v1")
-	return b, nil
 }
 
 // ExtractGroup extracts the applied configuration owned by fieldManager from
@@ -66,17 +39,36 @@ func ExtractGroupFrom(group *userv1.Group, fieldManager string, subresource stri
 // ExtractGroup provides a way to perform a extract/modify-in-place/apply workflow.
 // Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
+// Experimental!
 func ExtractGroup(group *userv1.Group, fieldManager string) (*GroupApplyConfiguration, error) {
-	return ExtractGroupFrom(group, fieldManager, "")
+	return extractGroup(group, fieldManager, "")
 }
 
-func (b GroupApplyConfiguration) IsApplyConfiguration() {}
+// ExtractGroupStatus is the same as ExtractGroup except
+// that it extracts the status subresource applied configuration.
+// Experimental!
+func ExtractGroupStatus(group *userv1.Group, fieldManager string) (*GroupApplyConfiguration, error) {
+	return extractGroup(group, fieldManager, "status")
+}
+
+func extractGroup(group *userv1.Group, fieldManager string, subresource string) (*GroupApplyConfiguration, error) {
+	b := &GroupApplyConfiguration{}
+	err := managedfields.ExtractInto(group, internal.Parser().Type("com.github.openshift.api.user.v1.Group"), fieldManager, b, subresource)
+	if err != nil {
+		return nil, err
+	}
+	b.WithName(group.Name)
+
+	b.WithKind("Group")
+	b.WithAPIVersion("user.openshift.io/v1")
+	return b, nil
+}
 
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithKind(value string) *GroupApplyConfiguration {
-	b.TypeMetaApplyConfiguration.Kind = &value
+	b.Kind = &value
 	return b
 }
 
@@ -84,7 +76,7 @@ func (b *GroupApplyConfiguration) WithKind(value string) *GroupApplyConfiguratio
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithAPIVersion(value string) *GroupApplyConfiguration {
-	b.TypeMetaApplyConfiguration.APIVersion = &value
+	b.APIVersion = &value
 	return b
 }
 
@@ -93,7 +85,7 @@ func (b *GroupApplyConfiguration) WithAPIVersion(value string) *GroupApplyConfig
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithName(value string) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.Name = &value
+	b.Name = &value
 	return b
 }
 
@@ -102,7 +94,7 @@ func (b *GroupApplyConfiguration) WithName(value string) *GroupApplyConfiguratio
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithGenerateName(value string) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.GenerateName = &value
+	b.GenerateName = &value
 	return b
 }
 
@@ -111,7 +103,7 @@ func (b *GroupApplyConfiguration) WithGenerateName(value string) *GroupApplyConf
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithNamespace(value string) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.Namespace = &value
+	b.Namespace = &value
 	return b
 }
 
@@ -120,7 +112,7 @@ func (b *GroupApplyConfiguration) WithNamespace(value string) *GroupApplyConfigu
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithUID(value types.UID) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.UID = &value
+	b.UID = &value
 	return b
 }
 
@@ -129,7 +121,7 @@ func (b *GroupApplyConfiguration) WithUID(value types.UID) *GroupApplyConfigurat
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithResourceVersion(value string) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
+	b.ResourceVersion = &value
 	return b
 }
 
@@ -138,25 +130,25 @@ func (b *GroupApplyConfiguration) WithResourceVersion(value string) *GroupApplyC
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithGeneration(value int64) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.Generation = &value
+	b.Generation = &value
 	return b
 }
 
 // WithCreationTimestamp sets the CreationTimestamp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
-func (b *GroupApplyConfiguration) WithCreationTimestamp(value apismetav1.Time) *GroupApplyConfiguration {
+func (b *GroupApplyConfiguration) WithCreationTimestamp(value metav1.Time) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
+	b.CreationTimestamp = &value
 	return b
 }
 
 // WithDeletionTimestamp sets the DeletionTimestamp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
-func (b *GroupApplyConfiguration) WithDeletionTimestamp(value apismetav1.Time) *GroupApplyConfiguration {
+func (b *GroupApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
+	b.DeletionTimestamp = &value
 	return b
 }
 
@@ -165,7 +157,7 @@ func (b *GroupApplyConfiguration) WithDeletionTimestamp(value apismetav1.Time) *
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *GroupApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
+	b.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -175,11 +167,11 @@ func (b *GroupApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *G
 // overwriting an existing map entries in Labels field with the same key.
 func (b *GroupApplyConfiguration) WithLabels(entries map[string]string) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
-		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
+	if b.Labels == nil && len(entries) > 0 {
+		b.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.ObjectMetaApplyConfiguration.Labels[k] = v
+		b.Labels[k] = v
 	}
 	return b
 }
@@ -190,11 +182,11 @@ func (b *GroupApplyConfiguration) WithLabels(entries map[string]string) *GroupAp
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *GroupApplyConfiguration) WithAnnotations(entries map[string]string) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
-		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
+	if b.Annotations == nil && len(entries) > 0 {
+		b.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.ObjectMetaApplyConfiguration.Annotations[k] = v
+		b.Annotations[k] = v
 	}
 	return b
 }
@@ -202,13 +194,13 @@ func (b *GroupApplyConfiguration) WithAnnotations(entries map[string]string) *Gr
 // WithOwnerReferences adds the given value to the OwnerReferences field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the OwnerReferences field.
-func (b *GroupApplyConfiguration) WithOwnerReferences(values ...*metav1.OwnerReferenceApplyConfiguration) *GroupApplyConfiguration {
+func (b *GroupApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerReferenceApplyConfiguration) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
+		b.OwnerReferences = append(b.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -219,14 +211,14 @@ func (b *GroupApplyConfiguration) WithOwnerReferences(values ...*metav1.OwnerRef
 func (b *GroupApplyConfiguration) WithFinalizers(values ...string) *GroupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
+		b.Finalizers = append(b.Finalizers, values[i])
 	}
 	return b
 }
 
 func (b *GroupApplyConfiguration) ensureObjectMetaApplyConfigurationExists() {
 	if b.ObjectMetaApplyConfiguration == nil {
-		b.ObjectMetaApplyConfiguration = &metav1.ObjectMetaApplyConfiguration{}
+		b.ObjectMetaApplyConfiguration = &v1.ObjectMetaApplyConfiguration{}
 	}
 }
 
@@ -236,26 +228,4 @@ func (b *GroupApplyConfiguration) ensureObjectMetaApplyConfigurationExists() {
 func (b *GroupApplyConfiguration) WithUsers(value userv1.OptionalNames) *GroupApplyConfiguration {
 	b.Users = &value
 	return b
-}
-
-// GetKind retrieves the value of the Kind field in the declarative configuration.
-func (b *GroupApplyConfiguration) GetKind() *string {
-	return b.TypeMetaApplyConfiguration.Kind
-}
-
-// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
-func (b *GroupApplyConfiguration) GetAPIVersion() *string {
-	return b.TypeMetaApplyConfiguration.APIVersion
-}
-
-// GetName retrieves the value of the Name field in the declarative configuration.
-func (b *GroupApplyConfiguration) GetName() *string {
-	b.ensureObjectMetaApplyConfigurationExists()
-	return b.ObjectMetaApplyConfiguration.Name
-}
-
-// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
-func (b *GroupApplyConfiguration) GetNamespace() *string {
-	b.ensureObjectMetaApplyConfigurationExists()
-	return b.ObjectMetaApplyConfiguration.Namespace
 }
