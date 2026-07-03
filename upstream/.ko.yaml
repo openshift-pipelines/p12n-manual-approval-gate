@@ -1,5 +1,0 @@
-defaultBaseImage: gcr.io/distroless/static:nonroot
-baseImageOverrides:
-  github.com/openshift-pipelines/manual-approval-gate/cmd/approver: registry.access.redhat.com/ubi9/ubi-minimal
-  github.com/openshift-pipelines/manual-approval-gate/cmd/controller: registry.access.redhat.com/ubi9/ubi-minimal
-  github.com/openshift-pipelines/manual-approval-gate/cmd/webhook: registry.access.redhat.com/ubi9/ubi-minimal
