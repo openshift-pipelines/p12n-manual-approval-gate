@@ -23,7 +23,7 @@ COPY --from=builder /tmp/manual-approval-gate-controller ${KO_APP}/manual-approv
 
 LABEL \
     com.redhat.component="openshift-pipelines-manual-approval-gate-controller-rhel10-container" \
-    cpe="cpe:/a:redhat:openshift_pipelines:nightly::el9" \
+    cpe="cpe:/a:redhat:openshift_pipelines:nightly::el10" \
     description="Red Hat OpenShift Pipelines manual-approval-gate controller" \
     io.k8s.description="Red Hat OpenShift Pipelines manual-approval-gate controller" \
     io.k8s.display-name="Red Hat OpenShift Pipelines manual-approval-gate controller" \
