@@ -16,7 +16,6 @@ import (
 	"go/types"
 	"io/fs"
 	"io/ioutil"
-	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -33,6 +32,7 @@ import (
 	"golang.org/x/tools/internal/gocommand"
 	"golang.org/x/tools/internal/gopathwalk"
 	"golang.org/x/tools/internal/stdlib"
+	"maps"
 )
 
 // importToGroup is a list of functions which map from an import path to
@@ -42,7 +42,7 @@ var importToGroup = []func(localPrefix, importPath string) (num int, ok bool){
 		if localPrefix == "" {
 			return
 		}
-		for p := range strings.SplitSeq(localPrefix, ",") {
+		for _, p := range strings.Split(localPrefix, ",") {
 			if strings.HasPrefix(importPath, p) || strings.TrimSuffix(p, "/") == importPath {
 				return 3, true
 			}
@@ -273,6 +273,7 @@ func (p *pass) loadPackageNames(ctx context.Context, imports []*ImportInfo) erro
 		}
 		unknown = append(unknown, imp.ImportPath)
 	}
+
 	names, err := p.source.LoadPackageNames(ctx, p.srcDir, unknown)
 	if err != nil {
 		return err
@@ -289,8 +290,8 @@ func (p *pass) loadPackageNames(ctx context.Context, imports []*ImportInfo) erro
 	return nil
 }
 
-// WithoutVersion removes a trailing major version, if there is one.
-func WithoutVersion(nm string) string {
+// if there is a trailing major version, remove it
+func withoutVersion(nm string) string {
 	if v := path.Base(nm); len(v) > 0 && v[0] == 'v' {
 		if _, err := strconv.Atoi(v[1:]); err == nil {
 			// this is, for instance, called with rand/v2 and returns rand
@@ -312,7 +313,7 @@ func (p *pass) importIdentifier(imp *ImportInfo) string {
 	}
 	known := p.knownPackages[imp.ImportPath]
 	if known != nil && known.Name != "" {
-		return WithoutVersion(known.Name)
+		return withoutVersion(known.Name)
 	}
 	return ImportPathToAssumedName(imp.ImportPath)
 }
@@ -1249,6 +1250,7 @@ func ImportPathToAssumedName(importPath string) string {
 // gopathResolver implements resolver for GOPATH workspaces.
 type gopathResolver struct {
 	env      *ProcessEnv
+	walked   bool
 	cache    *DirInfoCache
 	scanSema chan struct{} // scanSema prevents concurrent scans.
 }
@@ -1649,7 +1651,9 @@ func (s *symbolSearcher) search(ctx context.Context, candidates []pkgDistance, p
 	}()
 
 	// Start the search.
-	wg.Go(func() {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 		for i, c := range candidates {
 			select {
 			case loadExportsSem <- struct{}{}:
@@ -1678,7 +1682,7 @@ func (s *symbolSearcher) search(ctx context.Context, candidates []pkgDistance, p
 				rescv[i] <- pkg // may be nil
 			}()
 		}
-	})
+	}()
 
 	// Await the first (best) result.
 	for _, resc := range rescv {
