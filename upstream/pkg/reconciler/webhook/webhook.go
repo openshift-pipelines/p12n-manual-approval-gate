@@ -130,6 +130,14 @@ func (r *reconciler) Admit(ctx context.Context, request *admissionv1.AdmissionRe
 		return webhook.MakeErrorStatus("cannot decode incoming old object: %v", err)
 	}
 
+	// Spec-level fields are immutable after creation
+	if newObj.Spec.NumberOfApprovalsRequired != oldObj.Spec.NumberOfApprovalsRequired {
+		return webhook.MakeErrorStatus("spec.numberOfApprovalsRequired is immutable")
+	}
+	if newObj.Spec.Description != oldObj.Spec.Description {
+		return webhook.MakeErrorStatus("spec.description is immutable")
+	}
+
 	// Check if approval is required by the approver
 	if !isApprovalRequired(*oldObj) {
 		return &admissionv1.AdmissionResponse{
@@ -147,6 +155,18 @@ func (r *reconciler) Admit(ctx context.Context, request *admissionv1.AdmissionRe
 			Result: &metav1.Status{
 				Message: "User does not exist in the approval list",
 			},
+		}
+	}
+
+	// Approver list membership is immutable: reject additions, removals, and identity changes
+	if len(newObj.Spec.Approvers) != len(oldObj.Spec.Approvers) {
+		return webhook.MakeErrorStatus("spec.approvers list membership is immutable")
+	}
+	for i := range oldObj.Spec.Approvers {
+		if oldObj.Spec.Approvers[i].Name != newObj.Spec.Approvers[i].Name ||
+			v1alpha1.DefaultedApproverType(oldObj.Spec.Approvers[i].Type) !=
+				v1alpha1.DefaultedApproverType(newObj.Spec.Approvers[i].Type) {
+			return webhook.MakeErrorStatus("spec.approvers[%d] identity (name/type) is immutable", i)
 		}
 	}
 
