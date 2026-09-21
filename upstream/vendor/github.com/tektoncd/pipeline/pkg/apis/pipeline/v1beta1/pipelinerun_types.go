@@ -83,11 +83,6 @@ func (pr *PipelineRun) HasStarted() bool {
 	return pr.Status.StartTime != nil && !pr.Status.StartTime.IsZero()
 }
 
-// IsSuccessful returns true if the PipelineRun's's status indicates that it has succeeded.
-func (pr *PipelineRun) IsSuccessful() bool {
-	return pr != nil && pr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
-}
-
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
 func (pr *PipelineRun) IsCancelled() bool {
 	return pr.Spec.Status == PipelineRunSpecStatusCancelled
@@ -272,6 +267,7 @@ type PipelineRunSpec struct {
 	// +listType=atomic
 	Resources []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
+	// +listType=atomic
 	Params Params `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
@@ -305,12 +301,6 @@ type PipelineRunSpec struct {
 	// +optional
 	// +listType=atomic
 	TaskRunSpecs []PipelineTaskRunSpec `json:"taskRunSpecs,omitempty"`
-	// ManagedBy indicates which controller is responsible for reconciling
-	// this resource. If unset or set to "tekton.dev/pipeline", the default
-	// Tekton controller will manage this resource.
-	// This field is immutable.
-	// +optional
-	ManagedBy *string `json:"managedBy,omitempty"`
 }
 
 // TimeoutFields allows granular specification of pipeline, task, and finally timeouts
@@ -604,7 +594,7 @@ type PipelineRunList struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PipelineRun `json:"items"`
+	Items           []PipelineRun `json:"items,omitempty"`
 }
 
 // PipelineTaskRun reports the results of running a step in the Task. Each
@@ -630,11 +620,6 @@ type PipelineTaskRunSpec struct {
 
 	// Compute resources to use for this TaskRun
 	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
-
-	// Duration after which the TaskRun times out.
-	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
-	// +optional
-	Timeout *metav1.Duration `json:"timeout,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given
@@ -657,7 +642,6 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			s.SidecarOverrides = task.SidecarOverrides
 			s.Metadata = task.Metadata
 			s.ComputeResources = task.ComputeResources
-			s.Timeout = task.Timeout
 		}
 	}
 	return s
