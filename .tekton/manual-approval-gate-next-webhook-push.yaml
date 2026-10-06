@@ -39,6 +39,11 @@ spec:
   - name: prefetch-input
     value: |
       {"type": "rpm", "path": ".konflux/rpms"}
+  - name: repo-name
+    value: "manual-approval-gate"
+  - name: slack-group-ids
+    value:
+      - "S0B3NG4RH2Q"
   pipelineRef:
     name: docker-build-ta
   taskRunTemplate:
