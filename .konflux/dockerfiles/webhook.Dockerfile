@@ -29,6 +29,6 @@ LABEL \
     maintainer="pipelines-extcomm@redhat.com" \
     name="openshift-pipelines/pipelines-manual-approval-gate-webhook-rhel8" \
     summary="Red Hat OpenShift Pipelines manual-approval-gate webhook" \
-    version="v1.15.5"
+    version="v1.15.6"
 
 ENTRYPOINT ["/ko-app/manual-approval-gate-webhook"]
