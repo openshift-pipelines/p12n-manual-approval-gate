@@ -1,6 +1,6 @@
 module github.com/openshift-pipelines/manual-approval-gate
 
-go 1.25.12
+go 1.25.13
 
 require (
 	github.com/fatih/color v1.13.0
@@ -103,7 +103,7 @@ require (
 	google.golang.org/api v0.171.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
-	google.golang.org/grpc v1.82.1 // indirect
+	google.golang.org/grpc v1.82.2 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
